@@ -1,6 +1,77 @@
+---
+agent-bootstrap:
+  version: "1.0"
+  skills:
+    - name: innv0-innfo
+      repo: https://github.com/innV0/innv0-skills
+      path: skills/innv0-innfo
+      description: Crear, editar y validar modelos iNNfo
+      mcp:
+        - name: innfo-mcp
+          url: https://raw.githubusercontent.com/innV0/cogNNitive/main/packages/innfo-mcp/bin/innfo-mcp.bundle.js
+    - name: innv0-trannsform
+      repo: https://github.com/innV0/innv0-skills
+      path: skills/innv0-trannsform
+      description: Pipeline de transformación de documentos
+    - name: innv0-workflow-orchestrator
+      repo: https://github.com/innV0/innv0-skills
+      path: skills/innv0-workflow-orchestrator
+      description: Ejecutar flujos multi-skill con stages secuenciales
+  workflows:
+    - id: cognnitive
+      label: "CogNNitive — Crear un modelo iNNfo desde cero"
+      description: Elegir template, nombrar modelo, configurar workspace
+      skill: innv0-innfo
+    - id: transform
+      label: "traNNsform — Pipeline de transformación de documentos"
+      description: Importar/exportar documentos, procesar archivos
+      skill: innv0-trannsform
+---
+
 # eNNvironment
 
-Synopsis y análisis del ecosistema iNNv0. Este repo documenta cómo se relacionan los proyectos del ecosistema, con foco en la integración entre **cogNNitive** e **iNNv0_skills**.
+Synopsis, manifest, y punto de entrada del ecosistema iNNv0. Este repo documenta cómo se relacionan los proyectos del ecosistema y sirve como bootstrap para que un AI Agent instale los skills necesarios.
+
+→ Para empezar, decile a tu agente: _"Quiero usar eNNvironment https://innv0.github.io/eNNvironment"_
+
+---
+
+## ¿Qué es eNNvironment?
+
+eNNvironment es la puerta de entrada al ecosistema iNNv0. Le dice al agente qué skills instalar, de dónde descargarlos, y qué flujos de trabajo están disponibles.
+
+### Skills que instala
+
+| Skill | Descripción |
+|-------|-------------|
+| `innv0-innfo` | Crear, editar y validar modelos iNNfo (delega al MCP de cogNNitive) |
+| `innv0-trannsform` | Pipeline de importación/exportación de documentos |
+| `innv0-workflow-orchestrator` | Orquestación multi-skill |
+
+### Flujos disponibles
+
+| Opción | Descripción |
+|--------|-------------|
+| **CogNNitive** | Crear un modelo iNNfo desde cero: elegir template, nombrar, configurar workspace |
+| **traNNsform** | Pipeline de transformación de documentos: importar/exportar, procesar archivos |
+
+---
+
+## ¿Cómo funciona?
+
+```
+Usuario: "Quiero usar eNNvironment <URL>"
+         │
+         ▼
+Agent Web Bootstrap Skill
+  ├─ Fetch URL → parsea YAML frontmatter
+  ├─ Descarga skills desde GitHub
+  ├─ Si el skill declara MCP: descarga bundle + registra en opencode.json
+  ├─ Valida con skill-origin-guard
+  └─ Presenta menú de workflows
+```
+
+El bootstrap se encarga de todo: descarga, instalación, validación y registro de MCP. Solo se ejecuta una vez; la próxima vez los skills ya están disponibles.
 
 ---
 
@@ -16,15 +87,9 @@ Synopsis y análisis del ecosistema iNNv0. Este repo documenta cómo se relacion
 
 ## iNNv0_skills — Skills de Agente
 
-**Propósito**: Colección modular de skills para [OpenCode](https://github.com/innV0/iNNv0_skills) que enseñan al AI agent a trabajar con el ecosistema iNNfo.
+**Propósito**: Colección modular de skills para OpenCode (y agentes compatibles) que enseñan al AI agent a trabajar con el ecosistema iNNfo.
 
-- `innv0-innfo` — crear, editar, validar modelos iNNfo (delega al MCP de cogNNitive)
-- `innv0-trannsform` — pipeline de importación/exportación de documentos
-- `innv0-router` — entry point que deriva al skill correcto
-- `innv0-workflow-orchestrator` — orquestación multi-skill
-- `innv0-skills-lifecycle` — instalar, auditar, mantener skills
-- `innv0-site-generator` — generar sites de documentación
-- `innv0-design-presets` — tokens de diseño visual
+Skills disponibles en https://github.com/innV0/innv0-skills
 
 ---
 
@@ -39,21 +104,15 @@ AI Agent → iNNv0_skills (instrucciones) → innfo-mcp (MCP server) → @innv0/
 
 ### Punto de integración principal: innfo-mcp
 
-El MCP server es el puente. Vive en cogNNitive (`packages/innfo-mcp/`) y se distribuye como bundle compilado. iNNv0_skills lo descarga bajo demanda via `scripts/update-mcp.js` y lo registra como MCP server local en `.opencode/opencode.json`.
+El MCP server es el puente. Vive en cogNNitive (`packages/innfo-mcp/`) y se distribuye como bundle compilado desde GitHub RAW. El Agent Web Bootstrap lo descarga y registra automáticamente.
 
 ### URLs de especificaciones
-
-Los skills referencian specs canónicas desde cogNNitive:
 
 ```
 https://raw.githubusercontent.com/innV0/cogNNitive/main/specs/latest/level0/defiNNe_NN.md
 https://raw.githubusercontent.com/innV0/cogNNitive/main/specs/latest/level1/iNNfo_NN.md
 https://raw.githubusercontent.com/innV0/cogNNitive/main/specs/latest/level2/{template}/{template}_NN.md
 ```
-
-### Version sync
-
-`iNNv0_skills/scripts/update-mcp.js` fetchea la versión remota desde cogNNitive y descarga el bundle actualizado cuando hay una versión nueva.
 
 ---
 
@@ -68,16 +127,6 @@ https://raw.githubusercontent.com/innV0/cogNNitive/main/specs/latest/level2/{tem
 | **Versiona** | Specs iNNfo + paquetes npm | Skills individualmente (V_x-y-z) |
 
 La separación es limpia: **cogNNitive define y ejecuta**, iNNv0_skills **instruye al agente** para usar lo que cogNNitive expone. El MCP server es la interfaz estable entre ambos.
-
----
-
-## Decisiones de Arquitectura
-
-- **MCP como interfaz**: mientras la API del MCP no cambie, ambos lados evolucionan independientemente
-- **Single source of truth**: las specs viven solo en cogNNitive, referenciadas por URL
-- **Bundle bajo demanda**: el MCP no se trackea en git — `update-mcp.js` lo descarga al iniciar el workspace
-- **Zero-dependency tests**: los tests del CLI tool usan `assert` nativo de Node, no Vitest
-- **Sin npm todavía**: el MCP cambia frecuentemente — GitHub RAW + update script es suficiente hasta v1.0 estable
 
 ---
 
